@@ -160,6 +160,9 @@ function ParallaxImage({
 
 export function Gallery({ images }: { images: GalleryImage[] }) {
   const [active, setActive] = useState<GalleryImage | null>(null);
+  const [first, second, third] = images;
+  if (!first || !second || !third) return null;
+
 
   return (
     <section className="relative px-5 py-20 sm:py-28" aria-label="Photo gallery">
