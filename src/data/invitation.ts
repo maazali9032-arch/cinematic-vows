@@ -103,8 +103,9 @@ export const invitation = {
     phone: "+919876543210",
   },
 
+  // Drop a licensed audio file in /public and point `src` at it, e.g. "/music/theme.mp3".
   music: {
-    src: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=relaxing-145038.mp3",
+    src: "",
     title: "Ambient oud",
   },
 };

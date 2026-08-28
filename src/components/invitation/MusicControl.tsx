@@ -27,7 +27,7 @@ export function MusicControl({ src, started }: { src: string; started: boolean }
     }
   };
 
-  if (!started) return null;
+  if (!started || !src) return null;
 
   return (
     <>
