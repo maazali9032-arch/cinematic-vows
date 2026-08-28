@@ -174,17 +174,17 @@ export function Gallery({ images }: { images: GalleryImage[] }) {
         <div className="mt-12 space-y-6 sm:space-y-10">
           <Reveal>
             <ParallaxImage
-              image={images[0]}
-              onOpen={() => setActive(images[0])}
+              image={first}
+              onOpen={() => setActive(first)}
               className="mx-auto aspect-[3/4] w-full max-w-md"
             />
           </Reveal>
           <div className="grid grid-cols-5 items-end gap-4 sm:gap-8">
             <Reveal delay={0.1} className="col-span-3">
               <ParallaxImage
-                image={images[1]}
+                image={second}
                 range={28}
-                onOpen={() => setActive(images[1])}
+                onOpen={() => setActive(second)}
                 className="aspect-[3/4] w-full"
               />
             </Reveal>
@@ -196,9 +196,9 @@ export function Gallery({ images }: { images: GalleryImage[] }) {
           </div>
           <Reveal delay={0.1}>
             <ParallaxImage
-              image={images[2]}
+              image={third}
               range={26}
-              onOpen={() => setActive(images[2])}
+              onOpen={() => setActive(third)}
               className="aspect-[16/10] w-full"
             />
           </Reveal>
