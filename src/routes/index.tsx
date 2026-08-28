@@ -1,24 +1,48 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { invitation } from "@/data/invitation";
+import { Opening } from "@/components/invitation/Opening";
+import { CoupleHero } from "@/components/invitation/CoupleHero";
+import { Countdown } from "@/components/invitation/Countdown";
+import { MusicControl } from "@/components/invitation/MusicControl";
+import { Closing, Events, Gallery, Intro, Venue } from "@/components/invitation/Sections";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+const title = `${invitation.groomName} & ${invitation.brideName} — Wedding Invitation`;
+const description = `Join ${invitation.groomName} and ${invitation.brideName} in ${invitation.venue.city} as they celebrate their Nikah and Walima, 14 December 2026.`;
+
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title },
+      { name: "description", content: description },
+      { property: "og:title", content: title },
+      { property: "og:description", content: description },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: InvitationPage,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function InvitationPage() {
+  const [opened, setOpened] = useState(false);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="relative min-h-screen overflow-x-hidden bg-background">
+      <Opening data={invitation} open={opened} onOpen={() => setOpened(true)} />
+      <div aria-hidden={!opened}>
+        <CoupleHero data={invitation} started={opened} />
+        <Intro data={invitation} />
+        <Countdown
+          dateISO={invitation.weddingDateISO}
+          names={`${invitation.groomName} & ${invitation.brideName}`}
+        />
+        <Events events={invitation.events} />
+        <Venue venue={invitation.venue} />
+        <Gallery images={invitation.gallery} />
+        <Closing data={invitation} />
+      </div>
+      <MusicControl src={invitation.music.src} started={opened} />
+    </main>
   );
 }
