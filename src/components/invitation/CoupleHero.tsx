@@ -4,15 +4,6 @@ import heroBg from "@/assets/hero-bg.jpg";
 import { Corner, Ornament } from "./primitives";
 import type { Invitation } from "@/data/invitation";
 
-function formatShortDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
-  return `${dd} · ${mm} · ${yyyy}`;
-}
-
 export function CoupleHero({ data, started }: { data: Invitation; started: boolean }) {
   const reduced = useReducedMotion();
   const ref = useRef<HTMLElement | null>(null);
@@ -42,8 +33,8 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
     },
   });
 
-  const shortDate = formatShortDate(data.weddingDateISO);
-  const names = [data.groomName, data.brideName].filter(Boolean);
+  const groomName = data.groomName;
+  const brideName = data.brideName;
 
   return (
     <section
@@ -80,39 +71,33 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
           <Ornament />
         </motion.div>
 
-        {shortDate && (
-          <motion.p
-            {...step(2)}
-            className="mb-8 font-sans text-[0.58rem] uppercase tracking-wide-xl text-gold/85 sm:text-[0.66rem]"
-          >
-            {shortDate}
-          </motion.p>
-        )}
-
-        {names.length > 0 && (
+        {(groomName || brideName) && (
           <motion.h1 className="font-display font-light leading-[0.95] text-ivory">
-            {names.map((name, index) => (
+            {groomName && (
               <motion.span
-                key={name}
-                {...step(index + 3)}
+                {...step(2)}
                 className="block text-[3.1rem] uppercase tracking-[0.06em] sm:text-7xl"
               >
-                {index > 0 && (
-                  <span className="mr-3 text-3xl italic text-gold sm:text-4xl">&amp;</span>
-                )}
-                {name}
+                {groomName}
               </motion.span>
-            ))}
+            )}
+            {groomName && brideName && (
+              <motion.span
+                {...step(3)}
+                className="my-3 block text-3xl italic text-gold sm:my-4 sm:text-4xl"
+              >
+                &amp;
+              </motion.span>
+            )}
+            {brideName && (
+              <motion.span
+                {...step(4)}
+                className="block text-[3.1rem] uppercase tracking-[0.06em] sm:text-7xl"
+              >
+                {brideName}
+              </motion.span>
+            )}
           </motion.h1>
-        )}
-
-        {data.weddingDateLabel && (
-          <motion.p
-            {...step(6)}
-            className="mt-9 font-display text-base italic text-muted-foreground sm:text-lg"
-          >
-            {data.weddingDateLabel}
-          </motion.p>
         )}
       </motion.div>
 
