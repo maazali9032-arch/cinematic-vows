@@ -1,8 +1,17 @@
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import heroBg from "@/assets/hero-bg.jpg";
 import { Corner, Ornament } from "./primitives";
 import type { Invitation } from "@/data/invitation";
+
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd} · ${mm} · ${yyyy}`;
+}
 
 export function CoupleHero({ data, started }: { data: Invitation; started: boolean }) {
   const reduced = useReducedMotion();
@@ -10,6 +19,17 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
   const fade = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+
+  const backgroundSrc = useMemo(() => {
+    const extra = data.extra;
+    if (extra?.groomPhotoUrl) return extra.groomPhotoUrl;
+    if (extra?.bridePhotoUrl) return extra.bridePhotoUrl;
+    if (data.venue?.imageUrl) return data.venue.imageUrl;
+    if (data.gallery && data.gallery.length > 0 && data.gallery[0]) {
+      return data.gallery[0].src;
+    }
+    return heroBg;
+  }, [data]);
 
   const base = started ? 0.35 : 0;
   const step = (i: number) => ({
@@ -23,6 +43,7 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
   });
 
   const inv = data.invocation;
+  const shortDate = formatShortDate(data.weddingDateISO);
 
   return (
     <section
@@ -32,7 +53,7 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
     >
       <motion.div style={{ y }} className="absolute inset-0 -z-10">
         <img
-          src={heroBg}
+          src={backgroundSrc}
           alt=""
           width={1024}
           height={1536}
@@ -47,7 +68,7 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
       <Corner className="pointer-events-none absolute bottom-6 right-4 scale-[-1] sm:bottom-10 sm:right-8" />
 
       <motion.div style={{ opacity: fade }} className="mx-auto w-full max-w-xl text-center">
-        {inv.type !== "none" && (
+        {inv.type !== "none" && inv.text && (
           <motion.div {...step(0)} className="mb-10">
             <p
               dir={inv.rtl ? "rtl" : "ltr"}
@@ -68,12 +89,14 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
           <Ornament />
         </motion.div>
 
-        <motion.p
-          {...step(2)}
-          className="mb-8 font-sans text-[0.58rem] uppercase tracking-wide-xl text-gold/85 sm:text-[0.66rem]"
-        >
-          14 · 12 · 2026
-        </motion.p>
+        {shortDate && (
+          <motion.p
+            {...step(2)}
+            className="mb-8 font-sans text-[0.58rem] uppercase tracking-wide-xl text-gold/85 sm:text-[0.66rem]"
+          >
+            {shortDate}
+          </motion.p>
+        )}
 
         <motion.h1 className="font-display font-light leading-[0.95] text-ivory">
           <motion.span
@@ -85,9 +108,8 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
           <motion.span
             {...step(4)}
             className="my-3 block text-3xl italic text-gold sm:my-4 sm:text-4xl"
-          >
-            &amp;
-          </motion.span>
+            dangerouslySetInnerHTML={{ __html: "&amp;" }}
+          />
           <motion.span
             {...step(5)}
             className="block text-[3.1rem] uppercase tracking-[0.06em] sm:text-7xl"
@@ -96,12 +118,14 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
           </motion.span>
         </motion.h1>
 
-        <motion.p
-          {...step(6)}
-          className="mt-9 font-display text-base italic text-muted-foreground sm:text-lg"
-        >
-          {data.weddingDateLabel}
-        </motion.p>
+        {data.weddingDateLabel && (
+          <motion.p
+            {...step(6)}
+            className="mt-9 font-display text-base italic text-muted-foreground sm:text-lg"
+          >
+            {data.weddingDateLabel}
+          </motion.p>
+        )}
       </motion.div>
 
       <motion.div
