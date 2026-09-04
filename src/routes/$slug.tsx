@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Invitation } from "@/data/invitation";
 import { fetchPublicInvitation, type PublicInvitationResult } from "@/lib/public-invitation";
 import { UnavailableFallback } from "@/components/invitation/UnavailableFallback";
@@ -20,6 +20,7 @@ import {
   Venue,
 } from "@/components/invitation/Sections";
 import { RSVP } from "@/components/invitation/RSVP";
+import { createAmbience, type Ambience } from "@/lib/create-ambience";
 
 export const Route = createFileRoute("/$slug")({
   head: () => ({ meta: [{ title: "Cinematic Vows — Wedding Invitation" }] }),
@@ -48,11 +49,21 @@ function SlugInvitationPage() {
   useEffect(() => {
     let cancelled = false;
     setResult(null);
-    void fetchPublicInvitation(slug).then((next) => { if (!cancelled) setResult(next); });
-    return () => { cancelled = true; };
+    void fetchPublicInvitation(slug).then((next) => {
+      if (!cancelled) setResult(next);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [slug]);
 
-  if (!result) return <PageStatus title="Loading your invitation" detail="Just a moment while we prepare the details." />;
+  if (!result)
+    return (
+      <PageStatus
+        title="Loading your invitation"
+        detail="Just a moment while we prepare the details."
+      />
+    );
 
   if (result.state !== "live") {
     return (
@@ -74,22 +85,53 @@ function SlugInvitationPage() {
 }
 
 function PageStatus({ title, detail }: { title: string; detail: string }) {
-  return <main className="flex min-h-screen items-center justify-center bg-background px-6 text-center"><div><h1 className="font-display text-4xl text-ivory">{title}</h1><p className="mt-4 font-display italic text-muted-foreground">{detail}</p></div></main>;
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-background px-6 text-center">
+      <div>
+        <h1 className="font-display text-4xl text-ivory">{title}</h1>
+        <p className="mt-4 font-display italic text-muted-foreground">{detail}</p>
+      </div>
+    </main>
+  );
 }
 
-function InvitationRender({
-  invitation: data,
-  qrUrl,
-}: {
-  invitation: Invitation;
-  qrUrl: string;
-}) {
+function InvitationRender({ invitation: data, qrUrl }: { invitation: Invitation; qrUrl: string }) {
   const [opened, setOpened] = useState(false);
+  const [ambienceAvailable, setAmbienceAvailable] = useState(false);
+  const [ambiencePlaying, setAmbiencePlaying] = useState(false);
+  const ambienceRef = useRef<Ambience | null>(null);
   const coupleNames = `${data.groomName} & ${data.brideName}`;
+
+  useEffect(() => () => ambienceRef.current?.dispose(), []);
+
+  const openInvitation = () => {
+    // This runs in the button's click handler, preserving the browser's user gesture.
+    const ambience = ambienceRef.current ?? createAmbience();
+    ambienceRef.current = ambience;
+    setOpened(true);
+    void ambience?.start().then((didStart) => {
+      setAmbienceAvailable(didStart);
+      setAmbiencePlaying(didStart);
+    });
+  };
+
+  const toggleAmbience = () => {
+    const ambience = ambienceRef.current;
+    if (!ambience) return;
+    if (ambiencePlaying) {
+      ambience.stop();
+      setAmbiencePlaying(false);
+    } else {
+      void ambience.start().then((didStart) => {
+        setAmbienceAvailable(didStart);
+        setAmbiencePlaying(didStart);
+      });
+    }
+  };
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-background">
-      <Opening data={data} open={opened} onOpen={() => setOpened(true)} />
+      <Opening data={data} open={opened} onOpen={openInvitation} />
       <div aria-hidden={!opened}>
         <CoupleHero data={data} started={opened} />
         <Intro data={data} />
@@ -109,10 +151,11 @@ function InvitationRender({
         <Closing data={data} qrUrl={qrUrl} />
       </div>
       <MusicControl
-        src={data.music.src}
         started={opened}
-        enabled={data.music.enabled}
-        label={data.music.title}
+        playing={ambiencePlaying}
+        available={ambienceAvailable}
+        onToggle={toggleAmbience}
+        label="Ambient invitation music"
       />
     </main>
   );
