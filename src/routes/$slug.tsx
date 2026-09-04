@@ -7,19 +7,7 @@ import { Opening } from "@/components/invitation/Opening";
 import { CoupleHero } from "@/components/invitation/CoupleHero";
 import { Countdown } from "@/components/invitation/Countdown";
 import { MusicControl } from "@/components/invitation/MusicControl";
-import {
-  Closing,
-  Events,
-  Gallery,
-  Intro,
-  MemoriesSection,
-  ParentsSection,
-  ProfileSection,
-  RelativesSection,
-  SocialLinksSection,
-  Venue,
-} from "@/components/invitation/Sections";
-import { RSVP } from "@/components/invitation/RSVP";
+import { Closing, Events, Gallery, Venue } from "@/components/invitation/Sections";
 import { createAmbience, type Ambience } from "@/lib/create-ambience";
 
 export const Route = createFileRoute("/$slug")({
@@ -27,28 +15,27 @@ export const Route = createFileRoute("/$slug")({
   component: SlugInvitationPage,
 });
 
-function usePublicUrl(slug: string): string {
-  const [url, setUrl] = useState<string>(() => {
-    if (typeof window === "undefined") return `http://localhost:5173/${slug}`;
-    return `${window.location.origin}/${slug}`;
-  });
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setUrl(`${window.location.origin}/${slug}`);
-    }
-  }, [slug]);
-  return url;
+function sanitizeSlug(value: string): string | null {
+  try {
+    const slug = decodeURIComponent(value).trim();
+    return slug && !/[\\/]/.test(slug) ? slug : null;
+  } catch {
+    return null;
+  }
 }
 
 function SlugInvitationPage() {
   const { slug: rawSlug } = Route.useParams();
-  const slug = rawSlug.trim();
-  const qrUrl = usePublicUrl(slug);
+  const slug = sanitizeSlug(rawSlug);
   const [result, setResult] = useState<PublicInvitationResult | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setResult(null);
+    if (!slug) {
+      setResult({ state: "not_found" });
+      return;
+    }
     void fetchPublicInvitation(slug).then((next) => {
       if (!cancelled) setResult(next);
     });
@@ -75,13 +62,17 @@ function SlugInvitationPage() {
               ? "invalid"
               : "request_error"
         }
-        shop={result.shop}
+        shop={
+          result.state === "fallback"
+            ? result.shop
+            : { name: null, location: null, contact: null, locationUrl: null }
+        }
         currentDate={new Date()}
       />
     );
   }
 
-  return <InvitationRender invitation={result.invitation} qrUrl={qrUrl} />;
+  return <InvitationRender invitation={result.invitation} />;
 }
 
 function PageStatus({ title, detail }: { title: string; detail: string }) {
@@ -95,7 +86,7 @@ function PageStatus({ title, detail }: { title: string; detail: string }) {
   );
 }
 
-function InvitationRender({ invitation: data, qrUrl }: { invitation: Invitation; qrUrl: string }) {
+function InvitationRender({ invitation: data }: { invitation: Invitation }) {
   const [opened, setOpened] = useState(false);
   const [ambienceAvailable, setAmbienceAvailable] = useState(false);
   const [ambiencePlaying, setAmbiencePlaying] = useState(false);
@@ -134,21 +125,11 @@ function InvitationRender({ invitation: data, qrUrl }: { invitation: Invitation;
       <Opening data={data} open={opened} onOpen={openInvitation} />
       <div aria-hidden={!opened}>
         <CoupleHero data={data} started={opened} />
-        <Intro data={data} />
-        <ParentsSection parents={data.extra?.parents ?? []} />
-        <ProfileSection
-          education={data.extra?.education ?? null}
-          occupation={data.extra?.occupation ?? null}
-        />
-        <RelativesSection relatives={data.extra?.relatives ?? []} />
-        <Countdown dateISO={data.weddingDateISO} names={coupleNames} />
+        {data.weddingDateISO && <Countdown dateISO={data.weddingDateISO} names={coupleNames} />}
         <Events events={data.events} />
         <Venue venue={data.venue} />
         <Gallery images={data.gallery} />
-        <MemoriesSection memories={data.extra?.memories ?? []} />
-        <SocialLinksSection links={data.extra?.social ?? []} />
-        <RSVP deadline={data.rsvp?.deadline ?? null} coupleNames={coupleNames} />
-        <Closing data={data} qrUrl={qrUrl} />
+        <Closing data={data} />
       </div>
       <MusicControl
         started={opened}

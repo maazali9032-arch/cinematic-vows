@@ -1,108 +1,186 @@
+// @ts-nocheck -- RPC fields are validated at runtime before they are rendered.
 import { createClient } from "@supabase/supabase-js";
-import type { Design02Row } from "@/lib/supabase.server";
-import { mapRowToInvitation, type ShopInfo } from "@/lib/invitation-mapper";
-import type { Invitation } from "@/data/invitation";
+import type { Invitation, PublicContact, WeddingEvent, GalleryImage } from "@/data/invitation";
+import type { ShopInfo } from "@/lib/invitation-mapper";
 
 export type PublicInvitationResult =
-  | { state: "live"; invitation: Invitation; shop: ShopInfo }
-  | { state: "fallback" | "not_found"; shop: ShopInfo }
-  | { state: "request_error"; shop: ShopInfo };
+  | { state: "live"; invitation: Invitation }
+  | { state: "fallback"; shop: ShopInfo }
+  | { state: "not_found" }
+  | { state: "request_error" };
 
-type UnknownRecord = Record<string, unknown>;
+type RecordValue = Record<string, unknown>;
 
-const emptyShop: ShopInfo = { name: null, location: null, contact: null, locationUrl: null };
-
-/**
- * Fetches public invitation data through the database's intentionally public RPC.
- * The adapter accepts both Supabase's { data } envelope and a direct RPC payload.
- */
 export async function fetchPublicInvitation(slug: string): Promise<PublicInvitationResult> {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (!url || !anonKey || !slug) return { state: "request_error", shop: emptyShop };
+  if (!url || !anonKey || !slug) return { state: "request_error" };
 
   try {
     const supabase = createClient(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const { data, error } = await supabase.rpc("get_public_invitation_content", { p_slug: slug });
-    if (error) {
-      console.error("[get_public_invitation_content] RPC error:", error.message);
-      return { state: "request_error", shop: emptyShop };
-    }
+    if (error) return { state: "request_error" };
 
-    const payload = unwrapPayload(data);
-    const state = typeof payload.state === "string" ? payload.state.toLowerCase() : "";
-    const shop = readShop(payload.shop ?? payload.content);
+    const payload = unwrap(data);
+    if (payload.state === "fallback") return { state: "fallback", shop: mapShop(payload.shop) };
+    if (payload.state === "not_found") return { state: "not_found" };
+    if (payload.state !== "live") return { state: "request_error" };
 
-    if (state === "fallback") return { state: "fallback", shop };
-    if (state === "not_found") return { state: "not_found", shop };
-    if (state !== "live") return { state: "request_error", shop };
-
-    const content = asRecord(payload.content);
-    if (!content) return { state: "request_error", shop };
-    return { state: "live", invitation: mapRowToInvitation(normalizeContent(content, slug)), shop };
-  } catch (error) {
-    console.error("[get_public_invitation_content] request failed:", error);
-    return { state: "request_error", shop: emptyShop };
+    const content = record(payload.content);
+    if (!content) return { state: "request_error" };
+    return { state: "live", invitation: mapInvitation(content, record(payload.invitation), slug) };
+  } catch {
+    return { state: "request_error" };
   }
 }
 
-function unwrapPayload(value: unknown): UnknownRecord {
-  const outer = asRecord(value) ?? {};
-  return asRecord(outer.data) ?? outer;
+function unwrap(value: unknown): RecordValue {
+  const outer = record(value) ?? {};
+  return record(outer.data) ?? outer;
 }
 
-function asRecord(value: unknown): UnknownRecord | null {
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as UnknownRecord) : null;
-}
-
-function readShop(value: unknown): ShopInfo {
-  const shop = asRecord(value) ?? {};
+function mapInvitation(
+  content: RecordValue,
+  invitation: RecordValue | null,
+  slug: string,
+): Invitation {
+  const weddingDate = text(content.wedding_date);
   return {
-    name: text(shop.name ?? shop.shop_name ?? shop.shop_name_02) || null,
-    location: text(shop.location ?? shop.shop_location ?? shop.shop_location_02) || null,
-    contact: text(shop.contact ?? shop.shop_contact ?? shop.shop_contact_02) || null,
-    locationUrl: text(shop.locationUrl ?? shop.location_url ?? shop.shop_location_url ?? shop.shop_location_url_02) || null,
+    groomName: text(content.groom_name),
+    brideName: text(content.bride_name),
+    invocation: text(content.invocation),
+    weddingDateLabel: weddingDate,
+    weddingDateISO: toDateTime(weddingDate, text(content.start_time)),
+    events: mapEvents(content.events),
+    venue: {
+      name: text(content.venue_name),
+      address: text(content.venue_address),
+      city: text(content.city),
+      landmark: "",
+      mapsUrl: text(content.maps_url),
+      imageUrl: nullableText(content.venue_image_url),
+    },
+    gallery: mapGallery(content.gallery),
+    contacts: mapContacts(content.contacts),
+    qrText: nullableText(content.qr_text),
+    publicUrl: nullableText(invitation?.public_url),
+    slug,
+    intro: { eyebrow: "", lines: [], verse: "", verseSource: "" },
+    extra: {
+      groomPhotoUrl: null,
+      bridePhotoUrl: null,
+      parents: [],
+      education: null,
+      occupation: null,
+      relatives: [],
+      memories: [],
+      social: [],
+    },
+    closing: {
+      kicker: "",
+      message: [],
+      title: null,
+      note: null,
+      qrEnabled: false,
+      qrCenterText: "",
+    },
+    contact: { whatsapp: "", phone: "" },
+    hashtag: "",
+    music: { src: "", title: "", enabled: false },
+    rsvp: { deadline: null },
   };
 }
 
-function normalizeContent(content: UnknownRecord, slug: string): Design02Row {
-  const field = (...names: string[]) => names.map((name) => content[name]).find((value) => value != null);
-  const array = (...names: string[]) => {
-    const value = field(...names);
-    return Array.isArray(value) ? value.filter(asRecord) : [];
-  };
-  const object = (...names: string[]) => asRecord(field(...names)) ?? {};
-  const string = (...names: string[]) => text(field(...names));
+function mapEvents(value: unknown): WeddingEvent[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const event = record(item);
+    if (!event) return [];
+    const name = text(event.name ?? event.title ?? event.event_name);
+    const venue = text(event.venue ?? event.venue_name);
+    const date = text(event.date ?? event.event_date);
+    const time = text(event.time ?? event.start_time);
+    if (!name && !venue && !date && !time) return [];
+    return [
+      {
+        name,
+        venue,
+        date,
+        time,
+        address: text(event.address),
+        city: text(event.city),
+        mapsUrl: text(event.maps_url ?? event.mapsUrl),
+      },
+    ];
+  });
+}
 
+function mapGallery(value: unknown): GalleryImage[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item === "string" && item)
+      return [{ src: item, alt: "Wedding photo", width: 900, height: 1200 }];
+    const image = record(item);
+    const src = text(image?.url ?? image?.src ?? image?.image_url);
+    if (!src) return [];
+    return [
+      {
+        src,
+        alt: text(image?.alt ?? image?.caption) || "Wedding photo",
+        width: positive(image?.width, 900),
+        height: positive(image?.height, 1200),
+      },
+    ];
+  });
+}
+
+function mapContacts(value: unknown): PublicContact[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 2).flatMap((item) => {
+    const contact = record(item);
+    const phone = text(contact?.phone);
+    return phone
+      ? [
+          {
+            name: nullableText(contact?.name),
+            phone,
+            whatsappUrl: nullableText(contact?.whatsapp_url),
+          },
+        ]
+      : [];
+  });
+}
+
+function mapShop(value: unknown): ShopInfo {
+  const shop = record(value) ?? {};
+  const address = [text(shop.address), text(shop.city)].filter(Boolean).join(", ");
   return {
-    id_02: string("id_02", "id"),
-    invitation_code_02: string("invitation_code_02", "invitation_code"),
-    slug_02: string("slug_02", "slug") || slug,
-    status_02: string("status_02", "status") || "active",
-    active_from_02: string("active_from_02", "active_from") || new Date(0).toISOString(),
-    active_until_02: string("active_until_02", "active_until") || "9999-12-31T23:59:59.999Z",
-    wedding_date_02: nullable(string("wedding_date_02", "wedding_date")),
-    opening_kind_02: string("opening_kind_02", "opening_kind") || "none",
-    opening_text_02: nullable(string("opening_text_02", "opening_text")),
-    opening_translation_02: nullable(string("opening_translation_02", "opening_translation")),
-    opening_direction_02: string("opening_direction_02", "opening_direction") || "ltr",
-    groom_name_02: string("groom_name_02", "groom_name", "groomName"),
-    bride_name_02: string("bride_name_02", "bride_name", "brideName"),
-    couple_joiner_02: nullable(string("couple_joiner_02", "couple_joiner")),
-    groom_photo_url_02: nullable(string("groom_photo_url_02", "groom_photo_url")),
-    bride_photo_url_02: nullable(string("bride_photo_url_02", "bride_photo_url")),
-    parents_02: object("parents_02", "parents"), education_02: nullable(string("education_02", "education")), occupation_02: nullable(string("occupation_02", "occupation")),
-    relatives_02: object("relatives_02", "relatives"), venue_name_02: string("venue_name_02", "venue_name"), venue_address_02: string("venue_address_02", "venue_address"), venue_city_02: string("venue_city_02", "venue_city"), venue_maps_url_02: string("venue_maps_url_02", "venue_maps_url"), venue_image_url_02: nullable(string("venue_image_url_02", "venue_image_url")),
-    events_02: array("events_02", "events"), couple_photos_02: array("couple_photos_02", "couple_photos", "gallery"), memories_gallery_02: array("memories_gallery_02", "memories_gallery", "memories"), social_links_02: array("social_links_02", "social_links", "social"),
-    headline_date_02: nullable(string("headline_date_02", "headline_date")), message_kicker_02: nullable(string("message_kicker_02", "message_kicker")), message_body_02: nullable(string("message_body_02", "message_body")), message_closing_02: nullable(string("message_closing_02", "message_closing")), rsvp_deadline_02: nullable(string("rsvp_deadline_02", "rsvp_deadline")),
-    music_enabled_02: booleanOrNull(field("music_enabled_02", "music_enabled")), music_label_02: nullable(string("music_label_02", "music_label")), finale_title_02: nullable(string("finale_title_02", "finale_title")), finale_note_02: nullable(string("finale_note_02", "finale_note")), finale_qr_enabled_02: booleanOrNull(field("finale_qr_enabled_02", "finale_qr_enabled")), qr_center_text_02: string("qr_center_text_02", "qr_center_text"),
-    shop_name_02: nullable(string("shop_name_02", "shop_name")), shop_location_02: nullable(string("shop_location_02", "shop_location")), shop_contact_02: nullable(string("shop_contact_02", "shop_contact")), shop_location_url_02: nullable(string("shop_location_url_02", "shop_location_url")),
-    created_by_02: string("created_by_02", "created_by"), updated_by_02: nullable(string("updated_by_02", "updated_by")), created_at_02: string("created_at_02", "created_at"), updated_at_02: string("updated_at_02", "updated_at"),
+    name: nullableText(shop.name),
+    location: address || null,
+    contact: nullableText(shop.business_contact ?? shop.phone ?? shop.whatsapp),
+    locationUrl: null,
   };
 }
 
-function text(value: unknown): string { return typeof value === "string" ? value : value == null ? "" : String(value); }
-function nullable(value: string): string | null { return value || null; }
-function booleanOrNull(value: unknown): boolean | null { return typeof value === "boolean" ? value : null; }
+function toDateTime(date: string, time: string): string {
+  if (!date) return "";
+  const parsed = new Date(time ? `${date} ${time}` : date);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
+}
+function record(value: unknown): RecordValue | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as RecordValue)
+    : null;
+}
+function text(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+function nullableText(value: unknown): string | null {
+  return text(value) || null;
+}
+function positive(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}

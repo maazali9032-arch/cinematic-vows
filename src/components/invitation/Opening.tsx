@@ -33,9 +33,7 @@ export function Opening({
               You are invited
             </p>
             <h1 className="font-display text-4xl font-light leading-[1.05] text-ivory sm:text-5xl">
-              {data.groomName}
-              <span className="mx-3 text-gold">&amp;</span>
-              {data.brideName}
+              {[data.groomName, data.brideName].filter(Boolean).join(" & ")}
             </h1>
             <button
               onClick={onOpen}

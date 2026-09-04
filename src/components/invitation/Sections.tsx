@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { Instagram, MapPin, MessageCircle, Phone, X, Youtube } from "lucide-react";
 import { Diamond, Eyebrow, Ornament, Reveal, Rule } from "./primitives";
-import { QRCode } from "./QRCode";
 import type {
   GalleryImage,
   Invitation,
@@ -307,13 +306,7 @@ function ParallaxImage({
   );
 }
 
-function Lightbox({
-  active,
-  onClose,
-}: {
-  active: GalleryImage | null;
-  onClose: () => void;
-}) {
+function Lightbox({ active, onClose }: { active: GalleryImage | null; onClose: () => void }) {
   if (!active) return null;
   return (
     <div
@@ -473,9 +466,17 @@ export function SocialLinksSection({ links }: { links: SocialLink[] }) {
             return (
               <a
                 key={`${url}-${i}`}
-                href={url.startsWith("http") || url.startsWith("tel:") || url.startsWith("mailto:") ? url : `https://${url}`}
+                href={
+                  url.startsWith("http") || url.startsWith("tel:") || url.startsWith("mailto:")
+                    ? url
+                    : `https://${url}`
+                }
                 target={url.startsWith("tel:") || url.startsWith("mailto:") ? undefined : "_blank"}
-                rel={url.startsWith("tel:") || url.startsWith("mailto:") ? undefined : "noreferrer noopener"}
+                rel={
+                  url.startsWith("tel:") || url.startsWith("mailto:")
+                    ? undefined
+                    : "noreferrer noopener"
+                }
                 className="inline-flex items-center gap-2 border border-gold/40 px-5 py-3 font-sans text-[0.58rem] uppercase tracking-[0.28em] text-gold transition-colors duration-500 hover:bg-gold/10"
               >
                 <SocialIcon icon={l.icon ?? l.label ?? ""} />
@@ -489,18 +490,8 @@ export function SocialLinksSection({ links }: { links: SocialLink[] }) {
   );
 }
 
-export function Closing({
-  data,
-  qrUrl,
-}: {
-  data: Invitation;
-  qrUrl: string;
-}) {
-  const { closing, contact, extra } = data;
-  const hasWA = Boolean(contact.whatsapp);
-  const hasPhone = Boolean(contact.phone);
-  const showContact = hasWA || hasPhone;
-  const showQR = Boolean(closing.qrEnabled) && extra?.slug;
+export function Closing({ data }: { data: Invitation }) {
+  const contacts = data.contacts;
 
   return (
     <section
@@ -509,71 +500,43 @@ export function Closing({
     >
       <div className="mx-auto max-w-xl">
         <Reveal>
-          <Eyebrow>{closing.kicker}</Eyebrow>
+          <Eyebrow>With love</Eyebrow>
         </Reveal>
-        {closing.title && (
-          <Reveal delay={0.06}>
-            <h3 className="mt-8 font-display text-2xl italic text-muted-foreground sm:text-3xl">
-              {closing.title}
-            </h3>
-          </Reveal>
-        )}
         <Reveal delay={0.12}>
           <h2 className="mt-8 font-display text-4xl font-light uppercase leading-tight tracking-[0.08em] text-ivory sm:text-6xl">
-            {data.groomName}
-            <span className="mx-3 italic text-gold">&amp;</span>
-            {data.brideName}
+            {[data.groomName, data.brideName].filter(Boolean).join(" & ")}
           </h2>
         </Reveal>
-        <Reveal delay={0.25}>
-          <p className="mt-8 font-display text-xl italic leading-[1.8] text-muted-foreground sm:text-2xl">
-            {closing.message.map((line) => (
-              <span key={line} className="block">
-                {line}
-              </span>
-            ))}
-          </p>
-        </Reveal>
-        {closing.note && (
-          <Reveal delay={0.32}>
-            <p className="mt-8 font-display text-lg italic leading-relaxed text-gold-soft/80 sm:text-xl">
-              {closing.note}
-            </p>
-          </Reveal>
-        )}
-
-        {showContact && (
+        {contacts.length > 0 && (
           <Reveal delay={0.42}>
-            <div className="mt-12 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-              {hasWA && (
-                <a
-                  href={`https://wa.me/${contact.whatsapp.replace(/[^\d]/g, "")}?text=${encodeURIComponent(
-                    "We would love to attend your wedding!",
-                  )}`}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="inline-flex w-full items-center justify-center gap-2 border border-gold/50 px-7 py-3.5 font-sans text-[0.6rem] uppercase tracking-[0.3em] text-gold transition-colors duration-500 hover:bg-gold/10 sm:w-auto"
-                >
-                  <MessageCircle className="size-3.5" aria-hidden />
-                  Message on WhatsApp
-                </a>
-              )}
-              {hasPhone && (
-                <a
-                  href={`tel:${contact.phone}`}
-                  className="inline-flex w-full items-center justify-center gap-2 border border-gold/25 px-7 py-3.5 font-sans text-[0.6rem] uppercase tracking-[0.3em] text-ivory/80 transition-colors duration-500 hover:border-gold/50 sm:w-auto"
-                >
-                  <Phone className="size-3.5" aria-hidden />
-                  Call us
-                </a>
-              )}
+            <div className="mt-12 space-y-6">
+              {contacts.map((contact) => (
+                <div key={contact.phone}>
+                  <p className="mb-3 font-display italic text-ivory">{contact.name}</p>
+                  <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                    <a
+                      href={`tel:${contact.phone}`}
+                      className="inline-flex w-full items-center justify-center gap-2 border border-gold/25 px-7 py-3.5 font-sans text-[0.6rem] uppercase tracking-[0.3em] text-ivory/80 sm:w-auto"
+                    >
+                      <Phone className="size-3.5" aria-hidden />
+                      Call
+                    </a>
+                    <a
+                      href={
+                        contact.whatsappUrl ??
+                        `https://wa.me/${contact.phone.replace(/[^\d]/g, "")}`
+                      }
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex w-full items-center justify-center gap-2 border border-gold/50 px-7 py-3.5 font-sans text-[0.6rem] uppercase tracking-[0.3em] text-gold sm:w-auto"
+                    >
+                      <MessageCircle className="size-3.5" aria-hidden />
+                      WhatsApp
+                    </a>
+                  </div>
+                </div>
+              ))}
             </div>
-          </Reveal>
-        )}
-
-        {showQR && (
-          <Reveal delay={0.5} className="mt-16">
-            <QRCode url={qrUrl} centerText={closing.qrCenterText} />
           </Reveal>
         )}
 
@@ -582,7 +545,7 @@ export function Closing({
         </Reveal>
         <Reveal delay={0.68}>
           <p className="mt-8 font-sans text-[0.55rem] uppercase tracking-wide-xl text-gold/60">
-            {data.hashtag}
+            Wedding invitation
           </p>
         </Reveal>
       </div>

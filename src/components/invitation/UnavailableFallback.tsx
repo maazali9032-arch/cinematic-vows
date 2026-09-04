@@ -3,6 +3,7 @@ import { Corner, Eyebrow, Ornament, Reveal } from "./primitives";
 
 const STATUS_TEXT: Record<LifecycleStatus, { title: string; detail: string }> = {
   active: { title: "Unavailable", detail: "This invitation is not currently available." },
+  fallback: { title: "Invitation unavailable", detail: "This invitation is not currently available." },
   request_error: {
     title: "We couldn't load this invitation",
     detail: "Please refresh the page or try again in a moment.",
