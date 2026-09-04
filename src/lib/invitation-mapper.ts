@@ -20,6 +20,7 @@ export type LifecycleStatus =
   | "archived"
   | "not_yet_active"
   | "expired"
+  | "request_error"
   | "invalid";
 
 export function checkLifecycle(row: Design02Row | null): {

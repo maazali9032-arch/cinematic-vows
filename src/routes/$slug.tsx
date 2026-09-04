@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { fetchInvitationBySlug } from "@/lib/supabase.server";
-import { checkLifecycle, type LifecycleStatus, type ShopInfo } from "@/lib/invitation-mapper";
 import type { Invitation } from "@/data/invitation";
+import { fetchPublicInvitation, type PublicInvitationResult } from "@/lib/public-invitation";
 import { UnavailableFallback } from "@/components/invitation/UnavailableFallback";
 import { Opening } from "@/components/invitation/Opening";
 import { CoupleHero } from "@/components/invitation/CoupleHero";
@@ -22,58 +21,8 @@ import {
 } from "@/components/invitation/Sections";
 import { RSVP } from "@/components/invitation/RSVP";
 
-type LoaderData = {
-  lifecycle: LifecycleStatus;
-  shop: ShopInfo;
-  invitation: Invitation | null;
-  currentDateISO: string;
-  slug: string;
-};
-
 export const Route = createFileRoute("/$slug")({
-  loader: async ({ params }): Promise<LoaderData> => {
-    const slug = params.slug?.trim() ?? "";
-    const row = slug ? await fetchInvitationBySlug(slug) : null;
-    const { status, shop, invitation } = checkLifecycle(row);
-    return {
-      lifecycle: status,
-      shop,
-      invitation,
-      currentDateISO: new Date().toISOString(),
-      slug,
-    };
-  },
-  head: ({ loaderData }) => {
-    const { invitation, lifecycle, slug } = loaderData ?? {};
-    if (!invitation || lifecycle !== "active") {
-      const title = "Cinematic Vows — Wedding Invitation";
-      const description = "An elegant wedding invitation experience.";
-      return {
-        meta: [
-          { title },
-          { name: "description", content: description },
-          { property: "og:title", content: title },
-          { property: "og:description", content: description },
-          { property: "og:type", content: "website" },
-          { name: "twitter:card", content: "summary_large_image" },
-          { name: "robots", content: "noindex" },
-        ],
-      };
-    }
-    const title = `${invitation.groomName} & ${invitation.brideName} — Wedding Invitation`;
-    const description = `Join ${invitation.groomName} and ${invitation.brideName} in ${invitation.venue.city} as they celebrate their union.`;
-    return {
-      meta: [
-        { title },
-        { name: "description", content: description },
-        { property: "og:title", content: title },
-        { property: "og:description", content: description },
-        { property: "og:type", content: "website" },
-        { name: "twitter:card", content: "summary_large_image" },
-        { property: "og:url", content: `/${slug ?? ""}` },
-      ],
-    };
-  },
+  head: () => ({ meta: [{ title: "Cinematic Vows — Wedding Invitation" }] }),
   component: SlugInvitationPage,
 });
 
@@ -91,20 +40,41 @@ function usePublicUrl(slug: string): string {
 }
 
 function SlugInvitationPage() {
-  const { lifecycle, shop, invitation, currentDateISO, slug } = Route.useLoaderData();
+  const { slug: rawSlug } = Route.useParams();
+  const slug = rawSlug.trim();
   const qrUrl = usePublicUrl(slug);
+  const [result, setResult] = useState<PublicInvitationResult | null>(null);
 
-  if (!invitation || lifecycle !== "active") {
+  useEffect(() => {
+    let cancelled = false;
+    setResult(null);
+    void fetchPublicInvitation(slug).then((next) => { if (!cancelled) setResult(next); });
+    return () => { cancelled = true; };
+  }, [slug]);
+
+  if (!result) return <PageStatus title="Loading your invitation" detail="Just a moment while we prepare the details." />;
+
+  if (result.state !== "live") {
     return (
       <UnavailableFallback
-        status={lifecycle}
-        shop={shop}
-        currentDate={new Date(currentDateISO)}
+        status={
+          result.state === "fallback"
+            ? "draft"
+            : result.state === "not_found"
+              ? "invalid"
+              : "request_error"
+        }
+        shop={result.shop}
+        currentDate={new Date()}
       />
     );
   }
 
-  return <InvitationRender invitation={invitation} qrUrl={qrUrl} />;
+  return <InvitationRender invitation={result.invitation} qrUrl={qrUrl} />;
+}
+
+function PageStatus({ title, detail }: { title: string; detail: string }) {
+  return <main className="flex min-h-screen items-center justify-center bg-background px-6 text-center"><div><h1 className="font-display text-4xl text-ivory">{title}</h1><p className="mt-4 font-display italic text-muted-foreground">{detail}</p></div></main>;
 }
 
 function InvitationRender({

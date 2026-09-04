@@ -1,5 +1,3 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-
 type Design02Row = {
   id_02: string;
   invitation_code_02: string;
@@ -50,37 +48,5 @@ type Design02Row = {
   created_at_02: string;
   updated_at_02: string;
 };
-
-let client: SupabaseClient | null = null;
-
-export function getSupabase(): SupabaseClient {
-  if (client) return client;
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY server env vars. Never expose these via VITE_* variables.",
-    );
-  }
-  client = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  return client;
-}
-
-export async function fetchInvitationBySlug(slug: string): Promise<Design02Row | null> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from("design_02_invitations")
-    .select("*")
-    .eq("slug_02", slug)
-    .limit(1)
-    .maybeSingle();
-  if (error) {
-    console.error("[design_02_invitations] fetch error:", error);
-    return null;
-  }
-  return (data as Design02Row) ?? null;
-}
 
 export type { Design02Row };
