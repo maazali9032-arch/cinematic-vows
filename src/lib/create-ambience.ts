@@ -5,24 +5,23 @@ export type Ambience = {
   dispose: () => void;
 };
 
-export function createAmbience(): Ambience | null {
-  if (typeof window === "undefined") return null;
+export function createAmbience(src: string): Ambience | null {
+  if (!src || typeof window === "undefined") return null;
 
   try {
-    // Points directly to public/leberch-romantic-584475.mp3 automatically
-    const audio = new Audio("/leberch-romantic-584475.mp3");
+    // Only the public RPC-provided music URL is used.
+    const audio = new Audio(src);
     audio.loop = true;
-    
+
     // Balanced volume: clean and audible without over-powering your invitation text
-    audio.volume = 0.40; 
+    audio.volume = 0.4;
 
     return {
       async start() {
         try {
           await audio.play();
           return true;
-        } catch (error) {
-          console.warn("Audio playback blocked by standard browser policy:", error);
+        } catch {
           return false;
         }
       },
@@ -32,7 +31,7 @@ export function createAmbience(): Ambience | null {
       dispose() {
         audio.pause();
         audio.src = ""; // Clears the file stream cleanly from device memory
-      }
+      },
     };
   } catch {
     return null;

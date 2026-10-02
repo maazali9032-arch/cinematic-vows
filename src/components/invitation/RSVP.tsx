@@ -3,13 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check, X } from "lucide-react";
 import { Eyebrow, Ornament, Reveal } from "./primitives";
 
-export function RSVP({
-  deadline,
-  coupleNames,
-}: {
-  deadline: string | null;
-  coupleNames: string;
-}) {
+export function RSVP({ deadline, coupleNames }: { deadline: string | null; coupleNames: string }) {
   const [response, setResponse] = useState<"accept" | "decline" | null>(null);
   const reduced = useReducedMotion();
 

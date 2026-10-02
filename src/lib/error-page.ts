@@ -1,28 +1,32 @@
-export function renderErrorPage(): string {
+export function renderErrorPage(notFound = false): string {
+  const title = notFound ? "Invitation not found" : "We couldn't load this invitation";
+  const message = notFound
+    ? "Please check your invitation link."
+    : "Please refresh the page or try again in a moment.";
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>This page didn't load</title>
+    <title>${title}</title>
+    <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-      body { font: 15px/1.5 system-ui, -apple-system, sans-serif; background: #fafafa; color: #111; display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 1.5rem; }
+      body { box-sizing: border-box; font: 15px/1.5 Georgia, serif; background: #0b1412; color: #f4efe3; display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 1.5rem; }
       .card { max-width: 28rem; width: 100%; text-align: center; padding: 2rem; }
-      h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
-      p { color: #4b5563; margin: 0 0 1.5rem; }
+      h1 { font-size: 2.5rem; font-weight: 300; margin: 0 0 1rem; }
+      p { color: #bcb5a3; font-style: italic; margin: 0 0 1.5rem; }
       .actions { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
       a, button { padding: 0.5rem 1rem; border-radius: 0.375rem; font: inherit; cursor: pointer; text-decoration: none; border: 1px solid transparent; }
-      .primary { background: #111; color: #fff; }
+      .primary { background: transparent; border-color: #c6a861; color: #c6a861; }
       .secondary { background: #fff; color: #111; border-color: #d1d5db; }
     </style>
   </head>
   <body>
     <div class="card">
-      <h1>This page didn't load</h1>
-      <p>Something went wrong on our end. You can try refreshing or head back home.</p>
+      <h1>${title}</h1>
+      <p>${message}</p>
       <div class="actions">
-        <button class="primary" onclick="location.reload()">Try again</button>
-        <a class="secondary" href="/">Go home</a>
+        ${notFound ? "" : '<button class="primary" onclick="location.reload()">Try again</button>'}
       </div>
     </div>
   </body>

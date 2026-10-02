@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { Instagram, MapPin, MessageCircle, Phone, X, Youtube } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Diamond, Eyebrow, Ornament, Reveal, Rule } from "./primitives";
 import type {
   GalleryImage,
@@ -154,24 +155,35 @@ function EventItem({ event, index }: { event: WeddingEvent; index: number }) {
   return (
     <Reveal delay={index * 0.08} className="relative">
       <article className="border-t border-gold/20 px-1 py-14 text-center first:border-t-0 sm:py-16">
-        <h3 className="font-display text-[2.1rem] uppercase tracking-[0.18em] text-gold sm:text-5xl">
-          {event.name}
-        </h3>
+        {event.name && (
+          <h3 className="break-words font-display text-[2.1rem] uppercase tracking-[0.18em] text-gold sm:text-5xl">
+            {event.name}
+          </h3>
+        )}
         <div className="mx-auto mt-7 flex max-w-xs items-center gap-4">
           <Rule />
           <Diamond className="shrink-0" />
           <Rule />
         </div>
-        <p className="mt-7 font-display text-xl text-ivory sm:text-2xl">{event.date}</p>
-        <p className="mt-2 font-sans text-[0.62rem] uppercase tracking-[0.3em] text-gold/80">
-          {event.time}
-        </p>
+        {event.date && (
+          <p className="mt-7 font-display text-xl text-ivory sm:text-2xl">{event.date}</p>
+        )}
+        {event.time && (
+          <p className="mt-2 font-sans text-[0.62rem] uppercase tracking-[0.3em] text-gold/80">
+            {event.time}
+          </p>
+        )}
         {event.venue && (
           <p className="mt-6 font-display text-lg italic text-ivory/90">{event.venue}</p>
         )}
         {(event.address || event.city) && (
           <p className="mt-1 font-sans text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">
             {[event.address, event.city].filter(Boolean).join(" · ")}
+          </p>
+        )}
+        {event.note && (
+          <p className="mt-5 whitespace-pre-line font-display italic text-muted-foreground">
+            {event.note}
           </p>
         )}
         {event.mapsUrl && (
@@ -212,6 +224,8 @@ export function Events({ events }: { events: WeddingEvent[] }) {
 }
 
 export function Venue({ venue }: { venue: Invitation["venue"] }) {
+  if (![venue.name, venue.address, venue.city, venue.mapsUrl, venue.imageUrl].some(Boolean))
+    return null;
   const hasLandmark = Boolean(venue.landmark);
   const hasImage = Boolean(venue.imageUrl);
   return (
@@ -232,9 +246,11 @@ export function Venue({ venue }: { venue: Invitation["venue"] }) {
         <div className="border border-gold/25 px-6 py-14 text-center sm:px-12 sm:py-16">
           <Reveal>
             <Eyebrow>The venue</Eyebrow>
-            <h2 className="mt-7 font-display text-3xl font-light leading-tight text-ivory sm:text-4xl">
-              {venue.name}
-            </h2>
+            {venue.name && (
+              <h2 className="mt-7 break-words font-display text-3xl font-light leading-tight text-ivory sm:text-4xl">
+                {venue.name}
+              </h2>
+            )}
             {venue.address && (
               <p className="mt-5 font-display text-lg italic text-muted-foreground">
                 {venue.address}
@@ -307,31 +323,46 @@ function ParallaxImage({
 }
 
 function Lightbox({ active, onClose }: { active: GalleryImage | null; onClose: () => void }) {
+  const openerRef = useRef<HTMLElement | null>(null);
   if (!active) return null;
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={active.alt}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/95 p-5 backdrop-blur-sm"
-      onClick={onClose}
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
     >
-      <button
-        onClick={onClose}
-        aria-label="Close image"
-        className="absolute right-5 top-5 grid size-10 place-items-center border border-gold/40 text-gold"
-      >
-        <X className="size-4" />
-      </button>
-      <motion.img
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        src={active.src}
-        alt={active.alt}
-        className="max-h-[85svh] w-auto max-w-full object-contain"
-      />
-    </div>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/95 backdrop-blur-sm" />
+        <Dialog.Content
+          aria-describedby={undefined}
+          className="fixed inset-5 z-50 flex items-center justify-center outline-none"
+          onOpenAutoFocus={() => {
+            openerRef.current = document.activeElement as HTMLElement | null;
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            openerRef.current?.focus();
+          }}
+        >
+          <Dialog.Title className="sr-only">{active.alt}</Dialog.Title>
+          <Dialog.Close
+            aria-label="Close image"
+            className="absolute right-5 top-5 grid size-10 place-items-center border border-gold/40 text-gold"
+          >
+            <X className="size-4" />
+          </Dialog.Close>
+          <motion.img
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            src={active.src}
+            alt={active.alt}
+            className="max-h-[85svh] w-auto max-w-full object-contain"
+          />
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -413,8 +444,8 @@ export function Gallery({ images }: { images: GalleryImage[] }) {
 }
 
 export function MemoriesSection({ memories }: { memories: GalleryImage[] }) {
-  if (!memories || memories.length === 0) return null;
   const [active, setActive] = useState<GalleryImage | null>(null);
+  if (!memories || memories.length === 0) return null;
   return (
     <section className="relative px-5 py-20 sm:py-28" aria-label="Memories gallery">
       <div className="mx-auto max-w-4xl">
@@ -502,17 +533,22 @@ export function Closing({ data }: { data: Invitation }) {
         <Reveal>
           <Eyebrow>With love</Eyebrow>
         </Reveal>
-        <Reveal delay={0.12}>
-          <h2 className="mt-8 font-display text-4xl font-light uppercase leading-tight tracking-[0.08em] text-ivory sm:text-6xl">
-            {[data.groomName, data.brideName].filter(Boolean).join(" & ")}
-          </h2>
-        </Reveal>
+        {(data.groomName || data.brideName) && (
+          <Reveal delay={0.12}>
+            <h2 className="mt-8 break-words font-display text-4xl font-light uppercase leading-tight tracking-[0.08em] text-ivory sm:text-6xl">
+              {[data.groomName, data.brideName].filter(Boolean).join(" & ")}
+            </h2>
+          </Reveal>
+        )}
         {contacts.length > 0 && (
           <Reveal delay={0.42}>
-            <div className="mt-12 space-y-6">
+            <div className="mt-12 space-y-6" aria-label="Contact">
+              <Eyebrow>Contact</Eyebrow>
               {contacts.map((contact) => (
                 <div key={contact.phone}>
-                  <p className="mb-3 font-display italic text-ivory">{contact.name}</p>
+                  {contact.name && (
+                    <p className="mb-3 font-display italic text-ivory">{contact.name}</p>
+                  )}
                   <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
                     <a
                       href={`tel:${contact.phone}`}
@@ -548,6 +584,39 @@ export function Closing({ data }: { data: Invitation }) {
             Wedding invitation
           </p>
         </Reveal>
+      </div>
+    </section>
+  );
+}
+
+export function CoupleProfiles({ profiles }: { profiles: Invitation["profiles"] }) {
+  if (!profiles.length) return null;
+  return (
+    <section className="px-6 py-20 sm:py-28" aria-label="The couple">
+      <div className="mx-auto grid max-w-2xl gap-12 sm:grid-cols-2">
+        {profiles.map((profile, i) => (
+          <Reveal key={i} className="text-center">
+            {profile.photo && (
+              <img
+                src={profile.photo}
+                alt={profile.name || "Couple portrait"}
+                loading="lazy"
+                className="mx-auto mb-6 aspect-[3/4] w-full max-w-xs border border-gold/25 object-cover"
+              />
+            )}
+            {profile.name && <h2 className="font-display text-3xl text-ivory">{profile.name}</h2>}
+            {[profile.qualification, profile.occupation, profile.parents]
+              .filter(Boolean)
+              .map((line, j) => (
+                <p
+                  key={j}
+                  className="mt-3 whitespace-pre-line font-display text-lg italic text-muted-foreground"
+                >
+                  {line}
+                </p>
+              ))}
+          </Reveal>
+        ))}
       </div>
     </section>
   );

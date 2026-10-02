@@ -119,12 +119,7 @@
 
 @utility hairline {
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    oklch(0.79 0.1 84 / 65%),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, oklch(0.79 0.1 84 / 65%), transparent);
 }
 
 @keyframes shimmer {
@@ -157,5 +152,36 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+.brand-ribbon {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  height: clamp(10px, 1.6svh, 16px);
+  overflow: hidden;
+  background: oklch(0.17 0.028 165 / 35%);
+  border-top: 1px solid oklch(0.79 0.1 84 / 20%);
+  color: var(--gold-soft);
+  font-family: var(--font-display);
+  font-size: clamp(8px, 1.3svh, 12px);
+  line-height: clamp(10px, 1.6svh, 16px);
+  pointer-events: none;
+}
+.brand-track {
+  display: flex;
+  width: max-content;
+  animation: brand-marquee 60s linear infinite;
+}
+.brand-track > span {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+@keyframes brand-marquee {
+  to {
+    transform: translateX(-50%);
   }
 }

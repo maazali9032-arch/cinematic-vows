@@ -1,13 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import type { Invitation } from "@/data/invitation";
-import { fetchPublicInvitation, type PublicInvitationResult } from "@/lib/public-invitation";
+import {
+  fetchPublicInvitation,
+  slugFromPath,
+  type PublicInvitationResult,
+} from "@/lib/public-invitation";
 import { UnavailableFallback } from "@/components/invitation/UnavailableFallback";
 import { Opening } from "@/components/invitation/Opening";
 import { CoupleHero } from "@/components/invitation/CoupleHero";
 import { Countdown } from "@/components/invitation/Countdown";
 import { MusicControl } from "@/components/invitation/MusicControl";
-import { Closing, Events, Gallery, Venue } from "@/components/invitation/Sections";
+import {
+  Closing,
+  Events,
+  Gallery,
+  Venue,
+  CoupleProfiles,
+  RelativesSection,
+} from "@/components/invitation/Sections";
+import { BrandRibbon } from "@/components/invitation/BrandRibbon";
 import { createAmbience, type Ambience } from "@/lib/create-ambience";
 
 export const Route = createFileRoute("/$slug")({
@@ -15,36 +27,33 @@ export const Route = createFileRoute("/$slug")({
   component: SlugInvitationPage,
 });
 
-function sanitizeSlug(value: string): string | null {
-  try {
-    const slug = decodeURIComponent(value).trim();
-    return slug && !/[\\/]/.test(slug) ? slug : null;
-  } catch {
-    return null;
-  }
-}
-
 function SlugInvitationPage() {
   const { slug: rawSlug } = Route.useParams();
-  const slug = sanitizeSlug(rawSlug);
+  const slug = typeof window === "undefined" ? null : slugFromPath(window.location.pathname);
+  const [attempt, setAttempt] = useState(0);
+  const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
   const [result, setResult] = useState<PublicInvitationResult | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setResult(null);
     if (!slug) {
+      setLoadedSlug(null);
       setResult({ state: "not_found" });
       return;
     }
     void fetchPublicInvitation(slug).then((next) => {
-      if (!cancelled) setResult(next);
+      if (!cancelled) {
+        setLoadedSlug(slug);
+        setResult(next);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, attempt]);
 
-  if (!result)
+  if (!result || loadedSlug !== slug)
     return (
       <PageStatus
         title="Loading your invitation"
@@ -57,7 +66,7 @@ function SlugInvitationPage() {
       <UnavailableFallback
         status={
           result.state === "fallback"
-            ? "draft"
+            ? "fallback"
             : result.state === "not_found"
               ? "invalid"
               : "request_error"
@@ -67,12 +76,19 @@ function SlugInvitationPage() {
             ? result.shop
             : { name: null, location: null, contact: null, locationUrl: null }
         }
+        onRetry={result.state === "request_error" ? () => setAttempt((a) => a + 1) : undefined}
         currentDate={new Date()}
       />
     );
   }
 
-  return <InvitationRender invitation={result.invitation} />;
+  return (
+    <InvitationRender
+      key={`${rawSlug}-${attempt}`}
+      invitation={result.invitation}
+      brandName={result.brandName}
+    />
+  );
 }
 
 function PageStatus({ title, detail }: { title: string; detail: string }) {
@@ -86,18 +102,34 @@ function PageStatus({ title, detail }: { title: string; detail: string }) {
   );
 }
 
-function InvitationRender({ invitation: data }: { invitation: Invitation }) {
+function InvitationRender({
+  invitation: data,
+  brandName,
+}: {
+  invitation: Invitation;
+  brandName: string | null;
+}) {
   const [opened, setOpened] = useState(false);
   const [ambienceAvailable, setAmbienceAvailable] = useState(false);
   const [ambiencePlaying, setAmbiencePlaying] = useState(false);
   const ambienceRef = useRef<Ambience | null>(null);
-  const coupleNames = `${data.groomName} & ${data.brideName}`;
 
   useEffect(() => () => ambienceRef.current?.dispose(), []);
 
+  useEffect(() => {
+    if (opened) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [opened]);
+
   const openInvitation = () => {
+    window.scrollTo({ top: 0, behavior: "instant" });
     // This runs in the button's click handler, preserving the browser's user gesture.
-    const ambience = ambienceRef.current ?? createAmbience();
+    const ambience =
+      ambienceRef.current ?? (data.music.enabled ? createAmbience(data.music.src) : null);
     ambienceRef.current = ambience;
     setOpened(true);
     void ambience?.start().then((didStart) => {
@@ -123,14 +155,17 @@ function InvitationRender({ invitation: data }: { invitation: Invitation }) {
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-background">
       <Opening data={data} open={opened} onOpen={openInvitation} />
-      <div aria-hidden={!opened}>
+      <div aria-hidden={!opened} inert={!opened}>
         <CoupleHero data={data} started={opened} />
-        {data.weddingDateISO && <Countdown dateISO={data.weddingDateISO} names={coupleNames} />}
+        {data.weddingDateISO && <Countdown dateISO={data.weddingDateISO} />}
+        <CoupleProfiles profiles={data.profiles} />
+        <RelativesSection relatives={data.extra.relatives} />
         <Events events={data.events} />
         <Venue venue={data.venue} />
         <Gallery images={data.gallery} />
         <Closing data={data} />
       </div>
+      <BrandRibbon name={brandName} />
       <MusicControl
         started={opened}
         playing={ambiencePlaying}

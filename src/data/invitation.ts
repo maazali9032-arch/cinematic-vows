@@ -1,4 +1,5 @@
 export interface WeddingEvent {
+  note: string;
   name: string;
   date: string;
   time: string;
@@ -36,6 +37,15 @@ export interface Invitation {
   brideName: string;
   invocation: string;
   weddingDateLabel: string;
+  startTime: string;
+  endTime: string;
+  profiles: {
+    name: string;
+    photo: string | null;
+    qualification: string;
+    occupation: string;
+    parents: string;
+  }[];
   weddingDateISO: string;
   events: WeddingEvent[];
   venue: {

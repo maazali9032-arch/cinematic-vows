@@ -1,5 +1,24 @@
 # Cinematic Vows
 
+Public invitation frontend. The integration contract is in PUBLIC_INVITATION_INTEGRATION.md.
+
+Run npm install and npm run dev. Run npm run build for production.
+
+Configure only VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your hosting provider, using the central ZAR project. .env.example contains empty placeholders; .env is ignored.
+
+Invitations load at /:slug through get_public_invitation_content only. No sample invitation is substituted. Root and unknown routes show not found. The existing TanStack Start server handles direct visits and refreshes; deploy its generated server output rather than only the client assets.
+
+Music uses the returned music_url only when music_enabled is true, and starts after opening the invitation. The thin brand ribbon uses only shop.name returned by the public RPC; it is hidden when no approved name is returned. The current contract does not guarantee a shop name in live responses, so the central RPC must supply that approved field for the ribbon to appear.
+
+All supplied favicon image files remain unchanged.
+
+Validation: `npm test` checks the public response boundary, malformed data, aliases, safe links, and fallback isolation. `npx tsc --noEmit`, `npm run lint`, and `npm run build` check the application. The local design was also checked in Chromium using the real [Arian & Elara demo](https://cinematic-vows.vercel.app/arian-elara-02), including direct refresh, profiles, wedding date, approved brand ribbon, contacts, and favicon file bytes at mobile, tablet, and desktop widths. Gallery keyboard navigation, user-initiated music playback, missing optional fields, and malformed paths were checked with controlled public RPC responses.
+
+<details>
+<summary>Original design brief (historical; the public integration contract takes precedence)</summary>
+
+# Cinematic Vows
+
 BUILD PROMPT — CINEMATIC SINGLE-PAGE DIGITAL WEDDING INVITATION
 
 Build ONLY the public-facing digital wedding invitation shown in the supplied reference reel/video.
@@ -808,3 +827,5 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+</details>

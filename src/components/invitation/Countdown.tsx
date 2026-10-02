@@ -4,7 +4,7 @@ import { Eyebrow, Ornament, Reveal } from "./primitives";
 
 function diff(target: number) {
   const ms = target - Date.now();
-  if (ms <= 0) return null;
+  if (!Number.isFinite(ms) || ms <= 0) return null;
   return {
     Days: Math.floor(ms / 86400000),
     Hours: Math.floor(ms / 3600000) % 24,
@@ -13,7 +13,7 @@ function diff(target: number) {
   };
 }
 
-export function Countdown({ dateISO, names }: { dateISO: string; names: string }) {
+export function Countdown({ dateISO }: { dateISO: string }) {
   const target = new Date(dateISO).getTime();
   const [time, setTime] = useState<ReturnType<typeof diff>>(null);
 
@@ -22,6 +22,8 @@ export function Countdown({ dateISO, names }: { dateISO: string; names: string }
     const id = setInterval(() => setTime(diff(target)), 1000);
     return () => clearInterval(id);
   }, [target]);
+
+  if (!time) return null;
 
   return (
     <section className="relative px-6 py-24 sm:py-32" aria-label="Countdown to the wedding day">
@@ -51,16 +53,7 @@ export function Countdown({ dateISO, names }: { dateISO: string; names: string }
               </Reveal>
             ))}
           </div>
-        ) : (
-          <Reveal delay={0.1}>
-            <p className="mt-10 font-display text-2xl italic text-ivory sm:text-3xl">
-              {names} are married.
-            </p>
-            <p className="mt-3 font-sans text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
-              Thank you for celebrating with us
-            </p>
-          </Reveal>
-        )}
+        ) : null}
 
         <Reveal delay={0.3} className="mt-10 flex justify-center">
           <Ornament className="w-40 opacity-70" />

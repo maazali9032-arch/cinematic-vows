@@ -42,7 +42,7 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
       className="relative flex min-h-[100svh] items-center justify-center overflow-hidden px-6 py-[max(3rem,env(safe-area-inset-top))]"
       aria-label="Wedding invitation opening"
     >
-      <motion.div style={{ y }} className="absolute inset-0 -z-10">
+      <motion.div style={{ y }} className="absolute inset-0 z-0">
         <img
           src={backgroundSrc}
           alt=""
@@ -58,7 +58,10 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
       <Corner className="pointer-events-none absolute bottom-6 left-4 scale-y-[-1] sm:bottom-10 sm:left-8" />
       <Corner className="pointer-events-none absolute bottom-6 right-4 scale-[-1] sm:bottom-10 sm:right-8" />
 
-      <motion.div style={{ opacity: fade }} className="mx-auto w-full max-w-xl text-center">
+      <motion.div
+        style={{ opacity: fade }}
+        className="relative mx-auto w-full max-w-xl text-center"
+      >
         {data.invocation && (
           <motion.div {...step(0)} className="mb-10">
             <p dir="auto" className="font-arabic text-2xl leading-[1.9] text-gold-soft sm:text-3xl">
@@ -76,7 +79,7 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
             {groomName && (
               <motion.span
                 {...step(2)}
-                className="block text-[3.1rem] uppercase tracking-[0.06em] sm:text-7xl"
+                className="block break-words text-[clamp(2rem,12.7vw,3.1rem)] uppercase tracking-[0.06em] sm:text-7xl"
               >
                 {groomName}
               </motion.span>
@@ -92,12 +95,24 @@ export function CoupleHero({ data, started }: { data: Invitation; started: boole
             {brideName && (
               <motion.span
                 {...step(4)}
-                className="block text-[3.1rem] uppercase tracking-[0.06em] sm:text-7xl"
+                className="block break-words text-[clamp(2rem,12.7vw,3.1rem)] uppercase tracking-[0.06em] sm:text-7xl"
               >
                 {brideName}
               </motion.span>
             )}
           </motion.h1>
+        )}
+        {(data.weddingDateLabel || data.startTime || data.endTime) && (
+          <motion.div {...step(5)} className="mt-8 text-gold-soft">
+            {data.weddingDateLabel && (
+              <p className="font-display text-xl">{data.weddingDateLabel}</p>
+            )}
+            {(data.startTime || data.endTime) && (
+              <p className="mt-2 text-xs tracking-widest">
+                {[data.startTime, data.endTime].filter(Boolean).join(" – ")}
+              </p>
+            )}
+          </motion.div>
         )}
       </motion.div>
 

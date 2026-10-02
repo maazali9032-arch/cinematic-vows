@@ -45,7 +45,11 @@ export function QRCode({
       >
         <div className="relative grid place-items-center" style={{ width: size, height: size }}>
           {dataUrl ? (
-            <img src={dataUrl} alt={`QR code for ${url}`} className="w-full h-full object-contain" />
+            <img
+              src={dataUrl}
+              alt={`QR code for ${url}`}
+              className="w-full h-full object-contain"
+            />
           ) : (
             <div className="w-full h-full border border-dashed border-gold/20" />
           )}

@@ -1,9 +1,13 @@
+import { BrandRibbon } from "./BrandRibbon";
 import type { LifecycleStatus, ShopInfo } from "@/lib/invitation-mapper";
 import { Corner, Eyebrow, Ornament, Reveal } from "./primitives";
 
 const STATUS_TEXT: Record<LifecycleStatus, { title: string; detail: string }> = {
   active: { title: "Unavailable", detail: "This invitation is not currently available." },
-  fallback: { title: "Invitation unavailable", detail: "This invitation is not currently available." },
+  fallback: {
+    title: "Invitation unavailable",
+    detail: "This invitation is not currently available.",
+  },
   request_error: {
     title: "We couldn't load this invitation",
     detail: "Please refresh the page or try again in a moment.",
@@ -34,10 +38,12 @@ export function UnavailableFallback({
   status,
   shop,
   currentDate,
+  onRetry,
 }: {
   status: LifecycleStatus;
   shop: ShopInfo;
   currentDate: Date;
+  onRetry?: (() => void) | undefined;
 }) {
   const text = STATUS_TEXT[status] ?? STATUS_TEXT.invalid;
   const dateStr = currentDate.toLocaleDateString("en-US", {
@@ -76,6 +82,12 @@ export function UnavailableFallback({
             </p>
           </Reveal>
 
+          {onRetry && (
+            <button onClick={onRetry} className="mt-8 border border-gold/50 px-7 py-3 text-gold">
+              Try again
+            </button>
+          )}
+
           {(shop.name || shop.location || shop.contact) && (
             <Reveal delay={0.42}>
               <div className="mx-auto mt-14 max-w-sm border border-gold/25 px-6 py-10 text-center sm:px-10">
@@ -85,9 +97,7 @@ export function UnavailableFallback({
                   </p>
                 )}
                 {shop.location && (
-                  <p className="mt-4 font-display italic text-muted-foreground">
-                    {shop.location}
-                  </p>
+                  <p className="mt-4 font-display italic text-muted-foreground">{shop.location}</p>
                 )}
                 {shop.contact && (
                   <p className="mt-3 font-sans text-[0.6rem] uppercase tracking-[0.28em] text-gold/80">
@@ -113,6 +123,7 @@ export function UnavailableFallback({
           </Reveal>
         </div>
       </section>
+      <BrandRibbon name={shop.name} />
     </main>
   );
 }
