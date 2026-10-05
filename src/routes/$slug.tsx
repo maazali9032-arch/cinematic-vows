@@ -21,6 +21,7 @@ import {
 } from "@/components/invitation/Sections";
 import { BrandRibbon } from "@/components/invitation/BrandRibbon";
 import { createAmbience, type Ambience } from "@/lib/create-ambience";
+import decorativeFrame from "@/assets/decorative-frame.webp";
 
 export const Route = createFileRoute("/$slug")({
   head: () => ({ meta: [{ title: "Cinematic Vows — Wedding Invitation" }] }),
@@ -29,37 +30,46 @@ export const Route = createFileRoute("/$slug")({
 
 function SlugInvitationPage() {
   const { slug: rawSlug } = Route.useParams();
-  const slug = typeof window === "undefined" ? null : slugFromPath(window.location.pathname);
+  const slug =
+    typeof window === "undefined"
+      ? null
+      : slugFromPath(window.location.pathname);
+
   const [attempt, setAttempt] = useState(0);
   const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
   const [result, setResult] = useState<PublicInvitationResult | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+
     setResult(null);
+
     if (!slug) {
       setLoadedSlug(null);
       setResult({ state: "not_found" });
       return;
     }
+
     void fetchPublicInvitation(slug).then((next) => {
       if (!cancelled) {
         setLoadedSlug(slug);
         setResult(next);
       }
     });
+
     return () => {
       cancelled = true;
     };
   }, [slug, attempt]);
 
-  if (!result || loadedSlug !== slug)
+  if (!result || loadedSlug !== slug) {
     return (
       <PageStatus
         title="Loading your invitation"
         detail="Just a moment while we prepare the details."
       />
     );
+  }
 
   if (result.state !== "live") {
     return (
@@ -74,9 +84,18 @@ function SlugInvitationPage() {
         shop={
           result.state === "fallback"
             ? result.shop
-            : { name: null, location: null, contact: null, locationUrl: null }
+            : {
+                name: null,
+                location: null,
+                contact: null,
+                locationUrl: null,
+              }
         }
-        onRetry={result.state === "request_error" ? () => setAttempt((a) => a + 1) : undefined}
+        onRetry={
+          result.state === "request_error"
+            ? () => setAttempt((a) => a + 1)
+            : undefined
+        }
         currentDate={new Date()}
       />
     );
@@ -91,12 +110,20 @@ function SlugInvitationPage() {
   );
 }
 
-function PageStatus({ title, detail }: { title: string; detail: string }) {
+function PageStatus({
+  title,
+  detail,
+}: {
+  title: string;
+  detail: string;
+}) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6 text-center">
       <div>
         <h1 className="font-display text-4xl text-ivory">{title}</h1>
-        <p className="mt-4 font-display italic text-muted-foreground">{detail}</p>
+        <p className="mt-4 font-display italic text-muted-foreground">
+          {detail}
+        </p>
       </div>
     </main>
   );
@@ -112,26 +139,39 @@ function InvitationRender({
   const [opened, setOpened] = useState(false);
   const [ambienceAvailable, setAmbienceAvailable] = useState(false);
   const [ambiencePlaying, setAmbiencePlaying] = useState(false);
+
   const ambienceRef = useRef<Ambience | null>(null);
 
-  useEffect(() => () => ambienceRef.current?.dispose(), []);
+  useEffect(() => {
+    return () => ambienceRef.current?.dispose();
+  }, []);
 
   useEffect(() => {
     if (opened) return;
+
     const previousOverflow = document.body.style.overflow;
+
     document.body.style.overflow = "hidden";
+
     return () => {
       document.body.style.overflow = previousOverflow;
     };
   }, [opened]);
 
   const openInvitation = () => {
-    window.scrollTo({ top: 0, behavior: "instant" });
-    // This runs in the button's click handler, preserving the browser's user gesture.
+    window.scrollTo({
+      top: 0,
+      behavior: "instant",
+    });
+
     const ambience =
-      ambienceRef.current ?? (data.music.enabled ? createAmbience(data.music.src) : null);
+      ambienceRef.current ??
+      (data.music.enabled ? createAmbience(data.music.src) : null);
+
     ambienceRef.current = ambience;
+
     setOpened(true);
+
     void ambience?.start().then((didStart) => {
       setAmbienceAvailable(didStart);
       setAmbiencePlaying(didStart);
@@ -140,7 +180,9 @@ function InvitationRender({
 
   const toggleAmbience = () => {
     const ambience = ambienceRef.current;
+
     if (!ambience) return;
+
     if (ambiencePlaying) {
       ambience.stop();
       setAmbiencePlaying(false);
@@ -154,25 +196,74 @@ function InvitationRender({
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-background">
-      <Opening data={data} open={opened} onOpen={openInvitation} />
-      <div aria-hidden={!opened} inert={!opened}>
-        <CoupleHero data={data} started={opened} />
-        {data.weddingDateISO && <Countdown dateISO={data.weddingDateISO} />}
-        <CoupleProfiles profiles={data.profiles} />
-        <RelativesSection relatives={data.extra.relatives} />
-        <Events events={data.events} />
-        <Venue venue={data.venue} />
-        <Gallery images={data.gallery} />
-        <Closing data={data} />
-      </div>
-      <BrandRibbon name={brandName} />
-      <MusicControl
-        started={opened}
-        playing={ambiencePlaying}
-        available={ambienceAvailable}
-        onToggle={toggleAmbience}
-        label="Ambient invitation music"
+
+      {/* Permanent decorative frame */}
+      <img
+        src={decorativeFrame}
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-40 h-screen w-screen object-fill opacity-50"
+        // className="pointer-events-none fixed inset-0 z-40 h-screen w-screen object-fill"
       />
+
+      {/* Entire invitation stays above the decorative frame */}
+      <div className="relative z-50">
+        <Opening
+          data={data}
+          open={opened}
+          onOpen={openInvitation}
+        />
+
+        <div aria-hidden={!opened} inert={!opened}>
+          <CoupleHero
+            data={data}
+            started={opened}
+          />
+
+          {data.weddingDateISO && (
+            <Countdown dateISO={data.weddingDateISO} />
+          )}
+
+          <CoupleProfiles
+            profiles={data.profiles}
+          />
+
+          <RelativesSection
+            relatives={data.extra.relatives}
+          />
+
+          <Events
+            events={data.events}
+          />
+
+          <Venue
+            venue={data.venue}
+          />
+
+          <Gallery
+            images={data.gallery}
+          />
+
+          <Closing
+            data={data}
+          />
+        </div>
+      </div>
+
+      {/* Existing controls */}
+      <div className="relative z-[60]">
+        <BrandRibbon
+          name={brandName}
+        />
+
+        <MusicControl
+          started={opened}
+          playing={ambiencePlaying}
+          available={ambienceAvailable}
+          onToggle={toggleAmbience}
+          label="Ambient invitation music"
+        />
+      </div>
     </main>
   );
 }
