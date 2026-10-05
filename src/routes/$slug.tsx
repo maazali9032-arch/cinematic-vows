@@ -202,9 +202,9 @@ function InvitationRender({
         src={decorativeFrame}
         alt=""
         aria-hidden="true"
-        className="pointer-events-none fixed inset-0 z-40 h-screen w-screen object-fill opacity-50"
-        // className="pointer-events-none fixed inset-0 z-40 h-screen w-screen object-fill"
-      />
+        // className="pointer-events-none fixed inset-0 z-40 h-screen w-screen object-fill opacity-50"
+        className="pointer-events-none fixed inset-0 z-40 h-screen w-screen object-fill opacity-50 max-[684px]:block hidden"
+/>
 
       {/* Entire invitation stays above the decorative frame */}
       <div className="relative z-50">
